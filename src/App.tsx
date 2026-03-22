@@ -25,7 +25,6 @@ import {
   ImageUp
 } from "lucide-react";
 import heroImage from "../media/img/Gemini_Generated_Image_yp2pf4yp2pf4yp2p.png";
-import audioTrack from "../media/mp3/YTDown.com_YouTube_Media_DbXMjAYSa68_009_128k.mp3";
 
 const items = [
   { name: "PDF", icon: "📄", detail: "Reference files" },
@@ -41,6 +40,32 @@ const coupons = [
   { title: "Ice Cream Coupon", icon: <IceCream />, desc: "Redeem for one ice cream treat." },
   { title: "The 'I Owe You' Help", icon: <Sparkles />, desc: "A favor or help request that I absolutely cannot deny!" }
 ];
+
+const localAudioTracks = {
+  ...import.meta.glob("../media/mp3/*.mp3", {
+    eager: true,
+    import: "default",
+  }),
+  ...import.meta.glob("../media/mp3/*.MP3", {
+    eager: true,
+    import: "default",
+  }),
+} as Record<string, string>;
+
+const musicTracks = Object.entries(localAudioTracks)
+  .sort(([firstPath], [secondPath]) => firstPath.localeCompare(secondPath))
+  .map(([trackPath, src], index) => {
+    const fileName = trackPath.split("/").pop() ?? `Track ${index + 1}`;
+    const cleanedName = decodeURIComponent(fileName)
+      .replace(/\.[^.]+$/, "")
+      .replace(/[._-]+/g, " ")
+      .trim();
+
+    return {
+      title: cleanedName || `Track ${index + 1}`,
+      src,
+    };
+  });
 
 const memoryQuotes = [
   "Thanks for helping with labs",
@@ -94,29 +119,20 @@ export default function App() {
   const [isPageLinkCopied, setIsPageLinkCopied] = useState(false);
   const [isPageShared, setIsPageShared] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationPlayed, setCelebrationPlayed] = useState(false);
   const [isPostcardBusy, setIsPostcardBusy] = useState(false);
   const [postcardMessage, setPostcardMessage] = useState<string>("");
   const [activeChapter, setActiveChapter] = useState(chapterNav[0].key);
-  const [audioElement] = useState(() => new Audio(audioTrack));
+  const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const triggerHaptic = (pattern: number | number[]) => {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate(pattern);
     }
   };
-
-  useEffect(() => {
-    const handleEnded = () => setIsPlaying(false);
-    audioElement.preload = "auto";
-    audioElement.addEventListener("ended", handleEnded);
-
-    return () => {
-      audioElement.pause();
-      audioElement.removeEventListener("ended", handleEnded);
-    };
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -405,21 +421,50 @@ export default function App() {
   };
 
   const togglePlay = async () => {
+    if (musicTracks.length === 0) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+
     if (isPlaying) {
-      audioElement.pause();
+      audio.pause();
       setIsPlaying(false);
-    } else {
+      return;
+    }
+
+    const nextTrackIndex = hasPlayedOnce
+      ? (currentTrackIndex + 1) % musicTracks.length
+      : currentTrackIndex;
+
+    let candidateIndex = nextTrackIndex;
+    for (let attempts = 0; attempts < musicTracks.length; attempts += 1) {
+      audio.src = musicTracks[candidateIndex].src;
+      audio.load();
+
       try {
-        await audioElement.play();
+        await audio.play();
+        setCurrentTrackIndex(candidateIndex);
         setIsPlaying(true);
+        setHasPlayedOnce(true);
+        return;
       } catch {
-        setIsPlaying(false);
+        candidateIndex = (candidateIndex + 1) % musicTracks.length;
       }
     }
+
+    setIsPlaying(false);
   };
 
   return (
     <div className="min-h-screen font-sans bg-[#fff9fb]">
+      <audio
+        ref={audioRef}
+        preload="auto"
+        className="hidden"
+        onEnded={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+      />
+
       {/* Floating Elements */}
       <div className="fixed inset-0 pointer-events-none">
         <motion.div 
@@ -955,19 +1000,16 @@ export default function App() {
       </AnimatePresence>
 
       {/* Floating Music Player */}
-      <div className="fixed bottom-6 left-6 z-[100] flex items-center gap-3">
+      <div className="fixed bottom-6 left-6 z-[100]">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={togglePlay}
-          className="w-14 h-14 bg-bora text-white rounded-full shadow-lg flex items-center justify-center relative group"
+          disabled={musicTracks.length === 0}
+          className="w-14 h-14 bg-bora text-white rounded-full shadow-lg flex items-center justify-center"
+          aria-label={isPlaying ? "Pause song" : "Play song"}
         >
           {isPlaying ? <Pause size={24} /> : <Play size={24} />}
-          
-          {/* Tooltip */}
-          <div className="absolute left-full ml-3 px-3 py-1 bg-white text-bora text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            {isPlaying ? "Pause Music" : "Play Music"}
-          </div>
         </motion.button>
       </div>
 
