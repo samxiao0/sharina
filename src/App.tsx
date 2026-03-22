@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Heart, 
@@ -20,24 +20,32 @@ import {
   Copy,
   Share2,
   Play,
-  Pause
+  Pause,
+  ArrowDown,
+  ImageUp
 } from "lucide-react";
 import heroImage from "../media/img/Gemini_Generated_Image_yp2pf4yp2pf4yp2p.png";
 import audioTrack from "../media/mp3/YTDown.com_YouTube_Media_DbXMjAYSa68_009_128k.mp3";
 
 const items = [
-  { name: "PDF", icon: "📄" },
-  { name: "Notes", icon: "📝" },
-  { name: "Assignments", icon: "📚" },
-  { name: "Lab Records", icon: "🧪" },
-  { name: "Observations", icon: "🔍" },
-  { name: "Records", icon: "📁" }
+  { name: "PDF", icon: "📄", detail: "Reference files" },
+  { name: "Notes", icon: "📝", detail: "Quick summaries" },
+  { name: "Assignments", icon: "📚", detail: "Course tasks" },
+  { name: "Lab Records", icon: "🧪", detail: "Experiment logs" },
+  { name: "Observations", icon: "🔍", detail: "Key findings" },
+  { name: "Records", icon: "📁", detail: "Organized docs" }
 ];
 
 const coupons = [
-  { title: "Quick Coffee", icon: <Coffee />, desc: "A casual coffee break on me whenever you need a caffeine hit." },
-  { title: "Ice Cream Treat", icon: <IceCream />, desc: "A sweet treat to celebrate a small win or just because." },
+  { title: "Coffee Coupon", icon: <Coffee />, desc: "Redeem for one coffee during a study break." },
+  { title: "Ice Cream Coupon", icon: <IceCream />, desc: "Redeem for one ice cream treat." },
   { title: "The 'I Owe You' Help", icon: <Sparkles />, desc: "A favor or help request that I absolutely cannot deny!" }
+];
+
+const memoryQuotes = [
+  "Thanks for helping with labs",
+  "Your notes saved me",
+  "Couldn't have managed records without you",
 ];
 
 const BTSLogo = () => (
@@ -48,6 +56,12 @@ const BTSLogo = () => (
 );
 
 export default function App() {
+  const createdStamp = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date());
+  const mainContentRef = useRef<HTMLElement | null>(null);
   const [selectedCoupon, setSelectedCoupon] = useState<typeof coupons[0] | null>(null);
   const [isRedeemed, setIsRedeemed] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -55,7 +69,17 @@ export default function App() {
   const [isPageLinkCopied, setIsPageLinkCopied] = useState(false);
   const [isPageShared, setIsPageShared] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationPlayed, setCelebrationPlayed] = useState(false);
+  const [isPostcardBusy, setIsPostcardBusy] = useState(false);
+  const [postcardMessage, setPostcardMessage] = useState<string>("");
   const [audioElement] = useState(() => new Audio(audioTrack));
+
+  const triggerHaptic = (pattern: number | number[]) => {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(pattern);
+    }
+  };
 
   useEffect(() => {
     const handleEnded = () => setIsPlaying(false);
@@ -68,12 +92,217 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (celebrationPlayed) return;
+      const scrollTop = window.scrollY;
+      const doc = document.documentElement;
+      const maxScrollable = doc.scrollHeight - window.innerHeight;
+      if (maxScrollable <= 0) return;
+
+      const progress = scrollTop / maxScrollable;
+      if (progress >= 0.95) {
+        setCelebrationPlayed(true);
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 1800);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [celebrationPlayed]);
+
+  const scrollToMainContent = () => {
+    mainContentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const createPostcardBlob = async (): Promise<Blob | null> => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1920;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    const drawRoundedRect = (
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      radius: number,
+    ) => {
+      const r = Math.min(radius, width / 2, height / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + width - r, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+      ctx.lineTo(x + width, y + height - r);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+      ctx.lineTo(x + r, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    };
+
+    const wrapText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+      const words = text.split(" ");
+      let line = "";
+      let currentY = y;
+
+      for (const word of words) {
+        const testLine = line ? `${line} ${word}` : word;
+        if (ctx.measureText(testLine).width > maxWidth && line) {
+          ctx.fillText(line, x, currentY);
+          line = word;
+          currentY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+
+      if (line) ctx.fillText(line, x, currentY);
+      return currentY;
+    };
+
+    const bg = ctx.createLinearGradient(0, 0, 1080, 1920);
+    bg.addColorStop(0, "#fff9fc");
+    bg.addColorStop(0.5, "#ffeef5");
+    bg.addColorStop(1, "#f8ecff");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, 1080, 1920);
+
+    const glow = ctx.createRadialGradient(540, 760, 200, 540, 760, 940);
+    glow.addColorStop(0, "rgba(125, 95, 255, 0.18)");
+    glow.addColorStop(1, "rgba(125, 95, 255, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, 1080, 1920);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+    for (let i = 0; i < 18; i++) {
+      ctx.beginPath();
+      const x = 50 + i * 58;
+      const y = 120 + ((i * 111) % 1600);
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    drawRoundedRect(90, 120, 900, 1680, 56);
+    ctx.fillStyle = "rgba(255,255,255,0.80)";
+    ctx.fill();
+
+    ctx.fillStyle = "#7D5FFF";
+    ctx.font = "700 22px 'Inter', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("A SMALL THANK-YOU PAGE", 540, 210);
+
+    ctx.fillStyle = "#d81b60";
+    ctx.font = "italic 700 110px 'Cormorant Garamond', serif";
+    ctx.fillText("Thank You,", 540, 340);
+    ctx.font = "italic 700 106px 'Cormorant Garamond', serif";
+    ctx.fillText("Sharina", 540, 432);
+
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = heroImage;
+    }).catch(() => null);
+
+    if (image) {
+      drawRoundedRect(160, 500, 760, 760, 48);
+      ctx.save();
+      ctx.clip();
+      ctx.drawImage(image, 160, 500, 760, 760);
+      ctx.restore();
+    }
+
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "500 38px 'Inter', sans-serif";
+    ctx.textAlign = "center";
+    const textY = wrapText(
+      "Engineering life would have been much harder without your help. Thank you for all your support.",
+      540,
+      1370,
+      760,
+      54,
+    );
+
+    ctx.fillStyle = "#7D5FFF";
+    ctx.font = "700 24px 'Inter', sans-serif";
+    ctx.fillText(`Made with gratitude in 2026 • ${createdStamp}`, 540, textY + 96);
+
+    ctx.fillStyle = "#a78bfa";
+    ctx.font = "600 20px 'Inter', sans-serif";
+    ctx.fillText("Story-ready postcard", 540, textY + 136);
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#5b4699";
+    ctx.font = "700 34px 'Inter', sans-serif";
+    ctx.fillText("samxiao", 930, 1730);
+
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.95));
+  };
+
+  const handlePostcardShare = async () => {
+    if (isPostcardBusy) return;
+    setIsPostcardBusy(true);
+    setPostcardMessage("");
+
+    try {
+      const blob = await createPostcardBlob();
+      if (!blob) {
+        setPostcardMessage("Could not generate image");
+        return;
+      }
+
+      const file = new File([blob], "thank-you-postcard.png", { type: "image/png" });
+
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: "Thank You, Sharina",
+          text: "Postcard from this thank-you page",
+          files: [file],
+        });
+        setPostcardMessage("Ready for status/story");
+      } else {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "thank-you-postcard.png";
+        link.click();
+        URL.revokeObjectURL(url);
+        setPostcardMessage("Image downloaded");
+      }
+    } catch {
+      setPostcardMessage("Share canceled");
+    } finally {
+      setIsPostcardBusy(false);
+      setTimeout(() => setPostcardMessage(""), 2600);
+    }
+  };
+
   const handleRedeem = () => {
+    triggerHaptic([20, 30, 20]);
     setIsRedeemed(true);
     setTimeout(() => {
       setIsRedeemed(false);
       setSelectedCoupon(null);
     }, 2000);
+  };
+
+  const handleToggleFinalNote = () => {
+    const nextState = !showTranslation;
+    setShowTranslation(nextState);
+    if (nextState) {
+      triggerHaptic(24);
+    }
+  };
+
+  const handleReplyBack = () => {
+    const text = "Got your page, thank you! 😊";
+    const url = `https://wa.me/919951970441?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
   };
 
   const handleCopy = () => {
@@ -158,9 +387,45 @@ export default function App() {
         <div className="absolute top-[40%] right-[8%] rotate-45 scale-75"><BTSLogo /></div>
       </div>
 
-      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-20">
+      <section className="relative z-10 min-h-screen px-6 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+          className="text-center max-w-md"
+        >
+          <p className="text-xs md:text-sm uppercase tracking-[0.25em] text-bora/70 font-medium">
+            A small thank-you page
+          </p>
+          <p className="mt-3 text-[11px] md:text-xs text-gray-500 tracking-wide">
+            Scroll down to reveal the note section by section.
+          </p>
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-bora/20 bg-white/85 px-4 py-2 text-[10px] md:text-xs tracking-[0.14em] uppercase text-bora/80 shadow-sm">
+            <span>Made with gratitude in 2026</span>
+            <span className="text-bora/40">•</span>
+            <span>{createdStamp}</span>
+          </div>
+
+          <button
+            onClick={scrollToMainContent}
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-bora text-white px-6 py-3 text-xs uppercase tracking-[0.22em] font-semibold shadow-lg shadow-bora/20 hover:bg-bora/90 transition-colors"
+          >
+            <ArrowDown size={14} />
+            Start
+          </button>
+        </motion.div>
+      </section>
+
+      <main ref={mainContentRef} className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-20">
+
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-16 md:mb-24">
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.25 }}
+          transition={{ duration: 0.6, delay: 0.05 }}
+          className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-16 md:mb-24"
+        >
           <motion.div 
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
@@ -237,32 +502,88 @@ export default function App() {
             </div>
             <div className="absolute -inset-4 bg-bora/20 rounded-[40px] md:rounded-[60px] blur-2xl opacity-50 -z-0 rotate-6" />
           </motion.div>
-        </div>
+        </motion.section>
+
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.25 }}
+          transition={{ duration: 0.6 }}
+          className="mb-20 md:mb-28"
+        >
+          <div className="text-center mb-6 md:mb-8">
+            <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-bora/60 font-medium">Memory Notes</p>
+            <h3 className="mt-2 font-serif text-2xl md:text-3xl text-[#d81b60] italic">Little lines that stayed with me</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
+            {memoryQuotes.map((quote, idx) => (
+              <motion.div
+                key={quote}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.08 }}
+                className="rounded-2xl border border-pink-100/80 bg-white/85 px-5 py-4 text-center shadow-sm"
+              >
+                <p className="text-[13px] md:text-sm text-gray-600 leading-relaxed italic">"{quote}"</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
 
         {/* Items Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-20 md:mb-32">
-          {items.map((item, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-              whileHover={{ y: -10, scale: 1.02 }}
-              className="k-glass p-6 md:p-8 rounded-[30px] md:rounded-[40px] text-center group transition-all duration-500"
-            >
-              <div className="text-3xl md:text-4xl mb-3 md:mb-4 group-hover:scale-125 transition-transform duration-500">
-                {item.icon}
-              </div>
-              <h3 className="font-serif text-xl md:text-2xl text-[#d81b60] font-medium tracking-wide">
-                {item.name}
-              </h3>
-            </motion.div>
-          ))}
-        </div>
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, delay: 0.12 }}
+          className="mb-20 md:mb-32"
+        >
+          <div className="text-center mb-7 md:mb-10">
+            <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-bora/60 font-medium">Support Highlights</p>
+            <h2 className="mt-2 font-serif text-2xl md:text-4xl text-[#d81b60] italic">All the ways you helped</h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {items.map((item, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.08 }}
+                whileHover={{ y: -8, scale: 1.02 }}
+                className="relative overflow-hidden rounded-[28px] md:rounded-[34px] border border-white/70 bg-gradient-to-br from-white/90 to-[#fff1f6] p-5 md:p-7 text-center group transition-all duration-500 shadow-[0_12px_24px_rgba(216,27,96,0.10)]"
+              >
+                <div className="absolute top-3 right-4 text-[10px] tracking-[0.2em] uppercase text-bora/35 font-semibold">
+                  {String(idx + 1).padStart(2, "0")}
+                </div>
+
+                <div className="mx-auto mb-3 md:mb-4 w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/90 border border-pink-100 flex items-center justify-center text-2xl md:text-3xl group-hover:scale-110 transition-transform duration-500 shadow-sm">
+                  {item.icon}
+                </div>
+
+                <h3 className="font-serif text-xl md:text-2xl text-[#d81b60] font-medium tracking-wide leading-tight">
+                  {item.name}
+                </h3>
+
+                <p className="mt-1.5 text-[10px] md:text-xs uppercase tracking-[0.16em] text-gray-400 font-medium">
+                  {item.detail}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
 
         {/* Coupons Section */}
-        <section className="mb-20 md:mb-32">
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mb-20 md:mb-32"
+        >
           <h2 className="font-serif text-3xl md:text-4xl text-center text-[#d81b60] mb-8 md:mb-12 italic">Special Rewards for You</h2>
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-8">
             {coupons.map((coupon, idx) => (
@@ -285,7 +606,7 @@ export default function App() {
               </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
         {/* Coupon Modal */}
         <AnimatePresence>
@@ -397,7 +718,7 @@ export default function App() {
             </motion.div>
 
             <button 
-              onClick={() => setShowTranslation(!showTranslation)}
+              onClick={handleToggleFinalNote}
               className="mt-6 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-bora/60 hover:text-bora transition-colors bg-white/50 px-5 py-2.5 rounded-full border border-bora/10 shadow-sm"
             >
               <Languages size={12} />
@@ -440,7 +761,63 @@ export default function App() {
         <div className="text-bora/60 text-[10px] md:text-xs tracking-[0.3em] uppercase max-w-xs md:max-w-none leading-loose font-medium">
           Sharina &times; Army &times; Engineering Survival
         </div>
+        <div className="text-[11px] tracking-[0.2em] uppercase text-bora/70 font-semibold">
+          samxiao
+        </div>
+
+        <button
+          onClick={handlePostcardShare}
+          disabled={isPostcardBusy}
+          className="mt-2 inline-flex items-center gap-2 rounded-full bg-white border border-bora/20 px-5 py-3 text-[10px] md:text-xs uppercase tracking-[0.2em] text-bora font-semibold shadow-sm hover:bg-bora/5 transition-colors disabled:opacity-70"
+        >
+          <ImageUp size={14} />
+          {isPostcardBusy ? "Preparing postcard" : "Share as Postcard"}
+        </button>
+
+        {postcardMessage ? (
+          <p className="text-[10px] uppercase tracking-[0.2em] text-bora/70">{postcardMessage}</p>
+        ) : null}
+
+        <button
+          onClick={handleReplyBack}
+          className="inline-flex items-center gap-2 rounded-full bg-[#25D366] text-white px-5 py-3 text-[10px] md:text-xs uppercase tracking-[0.2em] font-semibold shadow-sm hover:bg-[#1fb75a] transition-colors"
+        >
+          <Share2 size={14} />
+          Reply Back on WhatsApp
+        </button>
       </footer>
+
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] pointer-events-none"
+          >
+            {Array.from({ length: 18 }).map((_, idx) => (
+              <motion.div
+                key={idx}
+                initial={{
+                  opacity: 0,
+                  scale: 0.4,
+                  x: `${(idx % 6) * 18 - 35}vw`,
+                  y: "40vh",
+                }}
+                animate={{
+                  opacity: [0, 1, 0],
+                  scale: [0.4, 1, 0.8],
+                  y: ["40vh", `${8 + (idx % 8) * 8}vh`],
+                }}
+                transition={{ duration: 1.4, ease: "easeOut", delay: idx * 0.02 }}
+                className="absolute left-1/2 text-bora/70"
+              >
+                <Sparkles size={idx % 2 === 0 ? 18 : 14} />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Music Player */}
       <div className="fixed bottom-6 left-6 z-[100] flex items-center gap-3">
