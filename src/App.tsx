@@ -365,7 +365,7 @@ export default function App() {
 
   const handleCopy = () => {
     if (!selectedCoupon) return;
-    const text = `Hey Sharina! I've redeemed a coupon for: ${selectedCoupon.title}!\n"${selectedCoupon.desc}"\n- From your Engineering Survival Buddy 💜`;
+    const text = `Hi samxiao, I redeemed this coupon: ${selectedCoupon.title}.\n"${selectedCoupon.desc}"\n- Sharina 💜`;
     navigator.clipboard.writeText(text);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
@@ -373,7 +373,7 @@ export default function App() {
 
   const handleWhatsAppShare = () => {
     if (!selectedCoupon) return;
-    const text = `Hey Sharina! I've redeemed a coupon for: ${selectedCoupon.title}!\n"${selectedCoupon.desc}"\n- From your Engineering Survival Buddy 💜`;
+    const text = `Hi samxiao, I redeemed this coupon: ${selectedCoupon.title}.\n"${selectedCoupon.desc}"\n- Sharina 💜`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
