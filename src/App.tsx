@@ -22,6 +22,8 @@ import {
   Play,
   Pause
 } from "lucide-react";
+import heroImage from "../media/img/Gemini_Generated_Image_yp2pf4yp2pf4yp2p.png";
+import audioTrack from "../media/mp3/YTDown.com_YouTube_Media_DbXMjAYSa68_009_128k.mp3";
 
 const items = [
   { name: "PDF", icon: "📄" },
@@ -46,7 +48,6 @@ const BTSLogo = () => (
 );
 
 export default function App() {
-  const defaultAudioSrc = "/media/mp3/YTDown.com_YouTube_Media_DbXMjAYSa68_009_128k.mp3";
   const [selectedCoupon, setSelectedCoupon] = useState<typeof coupons[0] | null>(null);
   const [isRedeemed, setIsRedeemed] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -54,68 +55,16 @@ export default function App() {
   const [isPageLinkCopied, setIsPageLinkCopied] = useState(false);
   const [isPageShared, setIsPageShared] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audioElement] = useState(new Audio());
+  const [audioElement] = useState(() => new Audio(audioTrack));
 
   useEffect(() => {
-    audioElement.src = defaultAudioSrc;
     const handleEnded = () => setIsPlaying(false);
+    audioElement.preload = "auto";
     audioElement.addEventListener("ended", handleEnded);
 
     return () => {
       audioElement.pause();
       audioElement.removeEventListener("ended", handleEnded);
-    };
-  }, [audioElement, defaultAudioSrc]);
-
-  useEffect(() => {
-    const desktopScrollFactor = 0.5;
-    const mobileScrollFactor = 0.4;
-    let touchStartY: number | null = null;
-
-    const handleWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      window.scrollBy({
-        top: event.deltaY * desktopScrollFactor,
-        behavior: "auto",
-      });
-    };
-
-    const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) return;
-      touchStartY = event.touches[0].clientY;
-    };
-
-    const handleTouchMove = (event: TouchEvent) => {
-      if (touchStartY === null || event.touches.length !== 1) return;
-
-      const currentY = event.touches[0].clientY;
-      const deltaY = touchStartY - currentY;
-
-      event.preventDefault();
-      window.scrollBy({
-        top: deltaY * mobileScrollFactor,
-        behavior: "auto",
-      });
-
-      touchStartY = currentY;
-    };
-
-    const handleTouchEnd = () => {
-      touchStartY = null;
-    };
-
-    window.addEventListener("wheel", handleWheel, { passive: false });
-    window.addEventListener("touchstart", handleTouchStart, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd, { passive: true });
-    window.addEventListener("touchcancel", handleTouchEnd, { passive: true });
-
-    return () => {
-      window.removeEventListener("wheel", handleWheel);
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
-      window.removeEventListener("touchcancel", handleTouchEnd);
     };
   }, []);
 
@@ -168,17 +117,22 @@ export default function App() {
     }
   };
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     if (isPlaying) {
       audioElement.pause();
+      setIsPlaying(false);
     } else {
-      audioElement.play();
+      try {
+        await audioElement.play();
+        setIsPlaying(true);
+      } catch {
+        setIsPlaying(false);
+      }
     }
-    setIsPlaying(!isPlaying);
   };
 
   return (
-    <div className="min-h-screen font-sans bg-[#fff9fb] overflow-hidden">
+    <div className="min-h-screen font-sans bg-[#fff9fb]">
       {/* Floating Elements */}
       <div className="fixed inset-0 pointer-events-none">
         <motion.div 
@@ -275,7 +229,7 @@ export default function App() {
           >
             <div className="w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-[40px] md:rounded-[60px] overflow-hidden border-4 md:border-8 border-white shadow-2xl relative z-10 rotate-3">
               <img 
-                src="media/img/Gemini_Generated_Image_yp2pf4yp2pf4yp2p.png" 
+                src={heroImage}
                 alt="Korean Hanbok Aesthetic" 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
