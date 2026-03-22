@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@100..900&family=Nanum+Myeongjo:wght@400;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Inter", sans-serif;
+  --font-korean: "Nanum Myeongjo", serif;
+  --color-bora: #7D5FFF; /* Subtle BTS Purple */
+}
+
+body {
+  @apply bg-[#fff9fb] text-[#4a4a4a] selection:bg-[#ffd1dc] selection:text-[#d81b60];
+  background-image: radial-gradient(#7d5fff10 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.k-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.coupon-card {
+  background: repeating-linear-gradient(
+    45deg,
+    #ffffff,
+    #ffffff 10px,
+    #fff5f7 10px,
+    #fff5f7 20px
+  );
+  border: 2px dashed #ffd1dc;
+}
+
+.bts-logo {
+  display: flex;
+  gap: 2px;
+  opacity: 0.15;
+}
+
+.bts-logo-part {
+  width: 8px;
+  height: 20px;
+  background: var(--color-bora);
+  clip-path: polygon(0 0, 100% 15%, 100% 85%, 0 100%);
+}
+
+.bts-logo-part.right {
+  transform: scaleX(-1);
+}
