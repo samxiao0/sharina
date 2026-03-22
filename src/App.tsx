@@ -374,7 +374,7 @@ export default function App() {
   const handleWhatsAppShare = () => {
     if (!selectedCoupon) return;
     const text = `Hi samxiao, I redeemed this coupon: ${selectedCoupon.title}.\n"${selectedCoupon.desc}"\n- Sharina 💜`;
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const url = `https://wa.me/919951970441?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
@@ -819,7 +819,7 @@ export default function App() {
                       </div>
                       
                       <p className="text-[10px] text-gray-400 uppercase tracking-[0.2em] pt-2">
-                        Valid for one-time use with Sharina
+                        Valid for one-time use with SAMXIAO
                       </p>
                     </div>
                 </div>
