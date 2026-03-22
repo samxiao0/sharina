@@ -48,6 +48,31 @@ const memoryQuotes = [
   "Couldn't have managed records without you",
 ];
 
+const gratitudeMoments = [
+  {
+    title: "Lab Days",
+    note: "When experiments got messy, your guidance made everything manageable.",
+  },
+  {
+    title: "Assignment Rush",
+    note: "During deadline chaos, your notes and support really helped me stay on track.",
+  },
+  {
+    title: "Final Stretch",
+    note: "Near the end, your consistency and help made the semester much lighter.",
+  },
+];
+
+const chapterNav = [
+  { key: "intro", label: "Intro" },
+  { key: "thanks", label: "Thanks" },
+  { key: "journey", label: "Journey" },
+  { key: "note", label: "Note" },
+  { key: "highlights", label: "Highlights" },
+  { key: "rewards", label: "Rewards" },
+  { key: "final", label: "Final" },
+];
+
 const BTSLogo = () => (
   <div className="bts-logo">
     <div className="bts-logo-part" />
@@ -73,6 +98,7 @@ export default function App() {
   const [celebrationPlayed, setCelebrationPlayed] = useState(false);
   const [isPostcardBusy, setIsPostcardBusy] = useState(false);
   const [postcardMessage, setPostcardMessage] = useState<string>("");
+  const [activeChapter, setActiveChapter] = useState(chapterNav[0].key);
   const [audioElement] = useState(() => new Audio(audioTrack));
 
   const triggerHaptic = (pattern: number | number[]) => {
@@ -112,8 +138,44 @@ export default function App() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [celebrationPlayed]);
 
+  useEffect(() => {
+    const handleChapterTracking = () => {
+      const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-chapter]"));
+      if (sections.length === 0) return;
+
+      const viewportAnchor = window.innerHeight * 0.35;
+      let current = sections[0];
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        const distance = Math.abs(rect.top - viewportAnchor);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          current = section;
+        }
+      }
+
+      const chapterKey = current.dataset.chapter;
+      if (chapterKey) setActiveChapter(chapterKey);
+    };
+
+    handleChapterTracking();
+    window.addEventListener("scroll", handleChapterTracking, { passive: true });
+    window.addEventListener("resize", handleChapterTracking);
+    return () => {
+      window.removeEventListener("scroll", handleChapterTracking);
+      window.removeEventListener("resize", handleChapterTracking);
+    };
+  }, []);
+
   const scrollToMainContent = () => {
     mainContentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const scrollToChapter = (chapterKey: string) => {
+    const target = document.querySelector<HTMLElement>(`[data-chapter='${chapterKey}']`);
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const createPostcardBlob = async (): Promise<Blob | null> => {
@@ -387,7 +449,7 @@ export default function App() {
         <div className="absolute top-[40%] right-[8%] rotate-45 scale-75"><BTSLogo /></div>
       </div>
 
-      <section className="relative z-10 min-h-screen px-6 flex items-center justify-center">
+      <section data-chapter="intro" className="relative z-10 min-h-screen px-6 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -416,10 +478,27 @@ export default function App() {
         </motion.div>
       </section>
 
-      <main ref={mainContentRef} className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-20">
+      <div className="hidden lg:flex fixed left-6 top-1/2 -translate-y-1/2 z-[95] flex-col gap-2 bg-white/70 backdrop-blur-sm border border-bora/10 rounded-2xl px-3 py-3 shadow-md">
+        {chapterNav.map((chapter) => {
+          const isActive = activeChapter === chapter.key;
+          return (
+            <button
+              key={chapter.key}
+              onClick={() => scrollToChapter(chapter.key)}
+              className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] transition-colors ${isActive ? "text-bora" : "text-bora/45 hover:text-bora/80"}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-bora" : "bg-bora/30"}`} />
+              <span>{chapter.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <main ref={mainContentRef} className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-20 md:py-28">
 
         {/* Header Section */}
         <motion.section
+          data-chapter="thanks"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.25 }}
@@ -505,11 +584,70 @@ export default function App() {
         </motion.section>
 
         <motion.section
+          data-chapter="journey"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.7 }}
+          className="mb-24 md:mb-36 min-h-[72vh] flex flex-col justify-center"
+        >
+          <div className="text-center mb-8 md:mb-12">
+            <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-bora/60 font-medium">Journey</p>
+            <h3 className="mt-2 font-serif text-3xl md:text-5xl text-[#d81b60] italic">A small timeline of gratitude</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+            {gratitudeMoments.map((moment, idx) => (
+              <motion.article
+                key={moment.title}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.08 }}
+                className="rounded-[28px] border border-white/70 bg-white/85 px-5 py-6 md:p-7 shadow-[0_10px_24px_rgba(125,95,255,0.10)]"
+              >
+                <p className="text-[10px] uppercase tracking-[0.24em] text-bora/45 font-semibold">Step {idx + 1}</p>
+                <h4 className="mt-3 font-serif text-2xl text-[#d81b60]">{moment.title}</h4>
+                <p className="mt-3 text-sm text-gray-600 leading-relaxed">{moment.note}</p>
+              </motion.article>
+            ))}
+          </div>
+        </motion.section>
+
+        <motion.section
+          data-chapter="note"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.25 }}
+          transition={{ duration: 0.7 }}
+          className="mb-24 md:mb-36 min-h-[68vh] flex items-center"
+        >
+          <div className="w-full rounded-[32px] border border-bora/10 bg-gradient-to-br from-white/90 to-[#fff3f8] p-7 md:p-12 shadow-[0_14px_30px_rgba(216,27,96,0.10)]">
+            <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-bora/60 font-medium">Long Note</p>
+            <h3 className="mt-3 font-serif text-3xl md:text-5xl text-[#d81b60] italic">One more thing I wanted to say</h3>
+            <div className="mt-6 space-y-4 text-gray-600 leading-relaxed text-sm md:text-base">
+              <p>
+                This page is simple, but the gratitude behind it is real. Throughout labs, assignments, and regular class pressure,
+                your help made the difficult parts feel less overwhelming.
+              </p>
+              <p>
+                Thank you for being generous with your time, sharing notes, and helping when things got confusing. Small support like that
+                really matters more than people realize.
+              </p>
+              <p className="font-serif text-lg italic text-[#d81b60]/80">
+                I genuinely appreciate it. Thank you again, Sharina.
+              </p>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section
+          data-chapter="final"
           initial={{ opacity: 0, y: 18 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.25 }}
           transition={{ duration: 0.6 }}
-          className="mb-20 md:mb-28"
+          className="mb-24 md:mb-36"
         >
           <div className="text-center mb-6 md:mb-8">
             <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-bora/60 font-medium">Memory Notes</p>
@@ -534,6 +672,7 @@ export default function App() {
 
         {/* Items Grid */}
         <motion.section
+          data-chapter="highlights"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
@@ -578,6 +717,7 @@ export default function App() {
 
         {/* Coupons Section */}
         <motion.section
+          data-chapter="rewards"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
@@ -780,10 +920,9 @@ export default function App() {
 
         <button
           onClick={handleReplyBack}
-          className="inline-flex items-center gap-2 rounded-full bg-[#25D366] text-white px-5 py-3 text-[10px] md:text-xs uppercase tracking-[0.2em] font-semibold shadow-sm hover:bg-[#1fb75a] transition-colors"
+          className="text-[11px] md:text-xs text-bora/70 hover:text-bora underline underline-offset-4 transition-colors"
         >
-          <Share2 size={14} />
-          Reply Back on WhatsApp
+          Reply
         </button>
       </footer>
 
