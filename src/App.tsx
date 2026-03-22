@@ -294,10 +294,6 @@ export default function App() {
     ctx.font = "700 24px 'Inter', sans-serif";
     ctx.fillText(`Made with gratitude in 2026 • ${createdStamp}`, 540, textY + 96);
 
-    ctx.fillStyle = "#a78bfa";
-    ctx.font = "600 20px 'Inter', sans-serif";
-    ctx.fillText("Story-ready postcard", 540, textY + 136);
-
     ctx.textAlign = "right";
     ctx.fillStyle = "#5b4699";
     ctx.font = "700 34px 'Inter', sans-serif";
